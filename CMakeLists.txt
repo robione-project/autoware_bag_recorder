@@ -4,6 +4,8 @@ project(autoware_bag_recorder)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
+# ament_auto_find_build_dependencies()
+
 ament_auto_add_executable(autoware_bag_recorder
   src/autoware_bag_recorder_node.cpp
   src/autoware_bag_recorder.cpp)

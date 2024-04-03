@@ -24,6 +24,7 @@
 #include <rosbag2_storage/storage_options.hpp>
 
 #include <tier4_control_msgs/msg/gate_mode.hpp>
+#include "robeff_msgs/msg/llc_to_comp.hpp"
 
 #include <sys/statfs.h>
 
@@ -100,7 +101,7 @@ private:
   void free_disk_space_for_continue(autoware_bag_recorder::ModuleSection & section) const;
   static void check_files_in_folder(
     autoware_bag_recorder::ModuleSection & section, std::vector<std::string> & directories);
-  void gate_mode_cmd_callback(const tier4_control_msgs::msg::GateMode::ConstSharedPtr msg);
+  void gate_mode_cmd_callback(const robeff_msgs::msg::LlcToComp::ConstSharedPtr msg);
   void run();
 
   // parameters
@@ -126,11 +127,11 @@ private:
   std::vector<ModuleSection> module_sections_;
 
   std::vector<rclcpp::SubscriptionBase::SharedPtr> subscriptions_;
-  rclcpp::Subscription<tier4_control_msgs::msg::GateMode>::ConstSharedPtr gate_mode_sub_;
+  rclcpp::Subscription<robeff_msgs::msg::LlcToComp>::ConstSharedPtr gate_mode_sub_;
   rclcpp::Node::SharedPtr node_;
 
   std::shared_ptr<rclcpp::SerializedMessage> serialized_msg_ptr_;
-  tier4_control_msgs::msg::GateMode::ConstSharedPtr gate_mode_msg_ptr;
+  robeff_msgs::msg::LlcToComp::ConstSharedPtr gate_mode_msg_ptr;
 
   std::mutex writer_mutex_;
 };

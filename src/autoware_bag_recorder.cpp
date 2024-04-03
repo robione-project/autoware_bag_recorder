@@ -14,6 +14,7 @@
 
 #include "autoware_bag_recorder.hpp"
 
+
 namespace autoware_bag_recorder
 {
 
@@ -42,8 +43,8 @@ AutowareBagRecorderNode::AutowareBagRecorderNode(
   remaining_topic_num_ = 0;
 
   // create gate mode subscription
-  gate_mode_sub_ = create_subscription<tier4_control_msgs::msg::GateMode>(
-    "/control/current_gate_mode", 1,
+  gate_mode_sub_ = create_subscription<robeff_msgs::msg::LlcToComp>(
+    "/interface/llc_to_comp", 1,
     std::bind(&AutowareBagRecorderNode::gate_mode_cmd_callback, this, std::placeholders::_1));
 
   // initialize module sections
@@ -100,16 +101,23 @@ std::string AutowareBagRecorderNode::get_timestamp()
 void AutowareBagRecorderNode::create_bag_file(
   std::unique_ptr<rosbag2_cpp::Writer> & writer, const std::string & bag_path)
 {
-  if (std::filesystem::exists(bag_path)) {
-    return;
+  try
+  {
+    if (std::filesystem::exists(bag_path)) {
+      return;
+    }
+
+    writer = std::make_unique<rosbag2_cpp::Writer>();
+
+    rosbag2_storage::StorageOptions storage_options_new;
+    storage_options_new.uri = bag_path;
+    storage_options_new.storage_id = database_storage_;
+    writer->open(storage_options_new);
   }
-
-  writer = std::make_unique<rosbag2_cpp::Writer>();
-
-  rosbag2_storage::StorageOptions storage_options_new;
-  storage_options_new.uri = bag_path;
-  storage_options_new.storage_id = database_storage_;
-  writer->open(storage_options_new);
+  catch(const std::exception& e)
+  {
+  }
+ 
 }
 
 void AutowareBagRecorderNode::bag_file_handler(ModuleSection & section)
@@ -177,24 +185,25 @@ void AutowareBagRecorderNode::generic_subscription_callback(
     return;
   }
 
-  const bool is_auto_mode = gate_mode_msg_ptr->data == tier4_control_msgs::msg::GateMode::AUTO;
+  const bool is_auto_mode = gate_mode_msg_ptr->intervention == 0;
   const bool should_record = !enable_only_auto_mode_recording_ || (is_auto_mode && is_writing_);
 
   if (should_record) {
     auto serialized_bag_msg = std::make_shared<rosbag2_storage::SerializedBagMessage>();
-    serialized_bag_msg->serialized_data = std::make_shared<rcutils_uint8_array_t>();
-    serialized_bag_msg->topic_name = topic_name;
-    serialized_bag_msg->time_stamp = node_->now().nanoseconds();
-    serialized_bag_msg->serialized_data->buffer = msg->get_rcl_serialized_message().buffer;
-    serialized_bag_msg->serialized_data->buffer_length =
-      msg->get_rcl_serialized_message().buffer_length;
-    serialized_bag_msg->serialized_data->buffer_capacity =
-      msg->get_rcl_serialized_message().buffer_capacity;
-    serialized_bag_msg->serialized_data->allocator = msg->get_rcl_serialized_message().allocator;
+      auto serialized_bag_msg = std::make_shared<rosbag2_storage::SerializedBagMessage>();
+      serialized_bag_msg->serialized_data = std::make_shared<rcutils_uint8_array_t>();
+      serialized_bag_msg->topic_name = topic_name;
+      serialized_bag_msg->time_stamp = node_->now().nanoseconds();
+      serialized_bag_msg->serialized_data->buffer = msg->get_rcl_serialized_message().buffer;
+      serialized_bag_msg->serialized_data->buffer_length =
+        msg->get_rcl_serialized_message().buffer_length;
+      serialized_bag_msg->serialized_data->buffer_capacity =
+        msg->get_rcl_serialized_message().buffer_capacity;
+      serialized_bag_msg->serialized_data->allocator = msg->get_rcl_serialized_message().allocator;
 
-    std::lock_guard<std::mutex> lock(writer_mutex_);
-    section.bag_writer->write(serialized_bag_msg);
-  }
+      std::lock_guard<std::mutex> lock(writer_mutex_);
+      section.bag_writer->write(serialized_bag_msg);
+    }
 }
 
 void AutowareBagRecorderNode::rotate_topic_names(autoware_bag_recorder::ModuleSection & section)
@@ -320,10 +329,10 @@ void AutowareBagRecorderNode::free_disk_space_for_continue(
 }
 
 void AutowareBagRecorderNode::gate_mode_cmd_callback(
-  const tier4_control_msgs::msg::GateMode::ConstSharedPtr msg)
+  const robeff_msgs::msg::LlcToComp::ConstSharedPtr msg)
 {
   gate_mode_msg_ptr = msg;  // AUTO = 1, EXTERNAL = 0
-  if (gate_mode_msg_ptr->data != tier4_control_msgs::msg::GateMode::AUTO) {
+  if (gate_mode_msg_ptr->intervention != 0) {
     is_writing_ = false;
   }
 }
@@ -425,7 +434,7 @@ void AutowareBagRecorderNode::check_auto_mode()
     return;
   }
 
-  const bool is_auto_mode = gate_mode_msg_ptr->data == tier4_control_msgs::msg::GateMode::AUTO;
+  const bool is_auto_mode = gate_mode_msg_ptr->intervention == 0;
   const bool should_write = enable_only_auto_mode_recording_ && !is_writing_;
 
   if (is_auto_mode && should_write) {

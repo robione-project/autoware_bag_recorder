@@ -15,6 +15,7 @@
   <depend>rclcpp</depend>
   <depend>rosbag2_cpp</depend>
   <depend>rosbag2_storage</depend>
+  <depend>robeff_msgs</depend>
   <depend>tier4_control_msgs</depend>
 
   <export>
