@@ -189,7 +189,7 @@ void AutowareBagRecorderNode::generic_subscription_callback(
   const bool should_record = !enable_only_auto_mode_recording_ || (is_auto_mode && is_writing_);
 
   if (should_record) {
-    auto serialized_bag_msg = std::make_shared<rosbag2_storage::SerializedBagMessage>();
+      std::make_shared<rosbag2_storage::SerializedBagMessage>();
       auto serialized_bag_msg = std::make_shared<rosbag2_storage::SerializedBagMessage>();
       serialized_bag_msg->serialized_data = std::make_shared<rcutils_uint8_array_t>();
       serialized_bag_msg->topic_name = topic_name;
